@@ -25,7 +25,7 @@ class CFD3DDataset(Dataset):
     def __len__(self) -> int:
         return len(self.files)
 
-    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
+    def __getitem__(self, idx: int):
         data = np.load(self.files[idx])
         inp = torch.from_numpy(data["inp"]).float()   # shape (3, H, H, H)
         out = torch.from_numpy(data["out"]).float()   # shape (4, H, H, H)
@@ -51,7 +51,7 @@ def absolute_error(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 def take_slice(vol: np.ndarray, axis: int, k: int) -> np.ndarray:
     """
     Estrae una slice dall'array vol in base all'asse specificato:
-      - Se vol.ndim == 3: restitusce vol[k,:,:] (axis=0), vol[:,k,:] (axis=1) o vol[:,:,k] (axis=2)
+      - Se vol.ndim == 3: restituisce vol[k,:,:] (axis=0), vol[:,k,:] (axis=1) o vol[:,:,k] (axis=2)
       - Se vol.ndim == 4 e vol.shape[0] in (3,4): interpreta il primo indice come canale e restituisce
         vol[:,k,:,:] (axis=0), vol[:,:,k,:] (axis=1), vol[:,:,:,k] (axis=2)
       - Altrimenti usa vol.take(indices=k, axis=axis).
@@ -73,7 +73,7 @@ def take_slice(vol: np.ndarray, axis: int, k: int) -> np.ndarray:
     return vol.take(indices=k, axis=axis)
 
 
-def _add_colorbar(ax: plt.Axes, im: plt.AxesImage) -> None:
+def _add_colorbar(ax, im) -> None:
     """
     Aggiunge una colorbar all'asse ax per l'immagine im, posizionandola a destra.
     """
@@ -205,88 +205,48 @@ def plot_pressure_slices(
 ) -> None:
     """
     Confronta il campo di pressione vero (p_true) e predetto (p_pred) su slice multiple:
-      - centra i campi (sottrae la media)
-      - visualizza GT, Pred e errore relativo su ciascuna slice in ks lungo axis
+      - non centra i campi (perché stiamo mostrando l'errore assoluto)
+      - visualizza GT, Pred e errore assoluto su ciascuna slice in ks lungo axis
     """
-    # Centra i due campi sottraendo la media
-    pT = p_true - p_true.mean()
-    pP = p_pred - p_pred.mean()
-
-    # Calcola massimo valore assoluto per definire vmin/vmax coerenti
-    abs_max = max(np.abs(pT).max(), np.abs(pP).max())
-
     fig, axs = plt.subplots(
         len(ks), 3, figsize=(14, 4 * len(ks)), constrained_layout=True
     )
 
     for i, k in enumerate(ks):
-        sT = take_slice(pT, axis, k)
-        sP = take_slice(pP, axis, k)
-        rel_error = np.abs(sP - sT) / abs_max
+        sT = take_slice(p_true, axis, k)
+        sP = take_slice(p_pred, axis, k)
+        err_abs = absolute_error(sP, sT)
 
         # Pressure GT
-        im0 = axs[i, 0].imshow(sT, vmin=-abs_max, vmax=abs_max, cmap=cmap)
+        im0 = axs[i, 0].imshow(sT, cmap=cmap)
         axs[i, 0].set_title(f"GT Pressure\n(axis={axis}, k={k})")
         axs[i, 0].axis("off")
 
         # Pressure Predizione
-        im1 = axs[i, 1].imshow(sP, vmin=-abs_max, vmax=abs_max, cmap=cmap)
+        im1 = axs[i, 1].imshow(sP, cmap=cmap)
         axs[i, 1].set_title(f"Predicted Pressure\n(axis={axis}, k={k})")
         axs[i, 1].axis("off")
 
-        # Errore relativo pressione
-        im2 = axs[i, 2].imshow(rel_error, cmap=err_cmap)
-        axs[i, 2].set_title(f"Relative Error Pressure\n(axis={axis}, k={k})")
+        # Errore assoluto pressione
+        im2 = axs[i, 2].imshow(err_abs, cmap=err_cmap)
+        axs[i, 2].set_title(f"Absolute Error Pressure\n(axis={axis}, k={k})")
         axs[i, 2].axis("off")
 
-        # Colorbar solo nella prima riga
+        # Aggiungi colorbar solo alla prima riga
         if i == 0:
             _add_colorbar(axs[0, 0], im0)
             _add_colorbar(axs[0, 1], im1)
             _add_colorbar(axs[0, 2], im2)
 
     fig.suptitle(
-        f"Pressure Field Slices (GT vs Pred vs Rel Error)\nAxis = {axis}",
+        f"Pressure Field Slices (GT vs Pred vs Abs Error)\nAxis = {axis}",
         fontsize=16,
         y=1.02,
     )
     plt.show()
 
 
-def plot_divergence(u_pred: np.ndarray, axis: int, k: int | None = None, cmap: str = "inferno") -> None:
-    """
-    Calcola e visualizza la divergenza assoluta |∇·u_pred| su una sola slice.
-    - Se k è None, seleziona la slice centrale lungo l'asse axis.
-    - Normalizza la colorbar usando il 99.5° percentile per evitare outlier.
-    """
-    H = u_pred.shape[-1]
-    h = 1.0 / (H - 1)  # passo spaziale uniformemente su [0,1]
-
-    # Derivata parziale per ogni componente u_pred[i]
-    dux = np.gradient(u_pred[0], h, axis=0)
-    duy = np.gradient(u_pred[1], h, axis=1)
-    duz = np.gradient(u_pred[2], h, axis=2)
-    div_field = np.abs(dux + duy + duz)
-
-    # Se non specificato, usa la slice centrale
-    if k is None:
-        k = H // 2
-
-    sl = take_slice(div_field, axis, k)
-    vmax = np.quantile(sl, 0.995)
-
-    fig, ax = plt.subplots(figsize=(7, 6))
-    im = ax.imshow(sl, vmin=0, vmax=vmax, cmap=cmap)
-    ax.axis("off")
-    _add_colorbar(ax, im)
-
-    fig.suptitle(
-        f"Divergence of Predicted Velocity\n|∇·u_pred| — Axis = {axis}, k = {k}",
-        fontsize=16,
-        y=1.02,
-    )
-    plt.show()
-
+# Nota: la funzione plot_divergence è stata rimossa/disabilitata perché non richiesta.
 
 # Funzione main
 def main():
@@ -308,7 +268,7 @@ def main():
     parser.add_argument(
         "--sample_idx",
         type=int,
-        default=1,
+        default=5,
         help="Indice del campione da visualizzare",
     )
     parser.add_argument(
@@ -322,7 +282,7 @@ def main():
         "--ks",
         type=int,
         nargs="+",
-        default=[1, 10, 15],
+        default=[4, 8, 12],
         help="Profondità delle slice per magnitudine e quiver",
     )
     parser.add_argument(
@@ -346,7 +306,7 @@ def main():
 
     u_true = data["out"][:3]  # campi velocità (3, H, H, H)
     p_true = data["out"][3]   # campo pressione (H, H, H)
-    inp = torch.from_numpy(data["inp"]).unsqueeze(0)  # aggiunge batch dimension
+    inp = torch.from_numpy(data["inp"]).unsqueeze(0)  # aggiunge dimensione batch
 
     # Carica il modello FNO3d con i pesi salvati
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -376,13 +336,9 @@ def main():
     for axis in args.axes:
         plot_quiver_slices(u_true, u_pred, axis, args.ks, step=args.step)
 
-    # 3) Plot slices di pressione (GT vs Pred vs Errore Relativo)
+    # 3) Plot slices di pressione (GT vs Pred vs Errore Assoluto)
     for axis in args.axes:
         plot_pressure_slices(p_true, p_pred, axis, args.pressure_ks)
-
-    # 4) Plot divergenza |∇·u_pred| su una slice centrale o specificata
-    for axis in args.axes:
-        plot_divergence(u_pred, axis)
 
 
 if __name__ == "__main__":
