@@ -130,7 +130,7 @@ def plot_magnitude_slices(
             _add_colorbar(axs[0, 2], im2)
 
     fig.suptitle(
-        f"Velocity Magnitude Slices (GT vs Pred vs Abs Error)\nAxis = {axis}",
+        f"Velocity Magnitude Slices (GT vs Pred vs Abs Error)\n",
         fontsize=16,
         y=1.02,
     )
@@ -187,11 +187,6 @@ def plot_quiver_slices(
         ax[1].axis("off")
         ax[1].invert_yaxis()
 
-        fig.suptitle(
-            f"Velocity Vector Comparison\nAxis = {axis}, Slice k={k}",
-            fontsize=16,
-            y=1.02,
-        )
         plt.show()
 
 
@@ -239,7 +234,7 @@ def plot_pressure_slices(
             _add_colorbar(axs[0, 2], im2)
 
     fig.suptitle(
-        f"Pressure Field Slices (GT vs Pred vs Abs Error)\nAxis = {axis}",
+        f"Pressure Field Slices (GT vs Pred vs Abs Error)",
         fontsize=16,
         y=1.02,
     )
