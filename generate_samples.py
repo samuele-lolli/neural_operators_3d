@@ -24,7 +24,7 @@ from dolfin import (
 )
 
 #Costanti
-NE = 31                                # Numero di suddivisioni per asse (mesh NE×NE×NE)
+NE = 15                                # Numero di suddivisioni per asse (mesh NE×NE×NE)
 H = NE + 1                             # Numero di punti di campionamento lungo ogni asse
 U_MAX = 1.0                            # Velocità massima del profilo parabolico di ingresso
 TOL = 1e-6                             # Tolleranza per near(x, ...) nelle BC
