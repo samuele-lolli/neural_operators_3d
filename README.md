@@ -1,5 +1,3 @@
-# 3D Neural Operators for CFD Acceleration (Stokes Flow)
-
 ## 🎯 Obiettivo del Progetto
 Il progetto mira a creare un modello basato su Deep Learning per accelerare la simulazione di fluidi in 3D. L'obiettivo è sostituire o affiancare i costosi solver numerici classici con un operatore neurale (FNO3d) in grado di predire istantaneamente campi di velocità e pressione data una geometria e condizioni al contorno variabili.
 
