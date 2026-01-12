@@ -1,14 +1,14 @@
 # 3D Neural Operators for CFD Acceleration (Stokes Flow)
 
 ## 🎯 Obiettivo del Progetto
-Il progetto mira a creare un modello basato su Deep Learning per accelerare la simulazione di fluidi in 3D. L'obiettivo è sostituire o affiancare i costosi solver numerici classici (FEM) con un operatore neurale (FNO3d) in grado di predire istantaneamente campi di velocità e pressione data una geometria e condizioni al contorno variabili.
+Il progetto mira a creare un modello basato su Deep Learning per accelerare la simulazione di fluidi in 3D. L'obiettivo è sostituire o affiancare i costosi solver numerici classici con un operatore neurale (FNO3d) in grado di predire istantaneamente campi di velocità e pressione data una geometria e condizioni al contorno variabili.
 
 Il caso studio specifico riguarda il **flusso di Stokes** in un dominio cubico unitario con ingressi e uscite randomizzati.
 
 ---
 
 ## ⚙️ 1. Generazione Dati (Fisica e Simulazione)
-Il modulo di generazione dati (`generate_samples.py`) utilizza il metodo degli elementi finiti (FEM) tramite la libreria **FEniCS (legacy dolfin)** per creare il *Ground Truth*.
+Il modulo di generazione dati (`generate_samples.py`) utilizza il metodo degli elementi finiti tramite la libreria **FEniCS (legacy dolfin)** per creare il *Ground Truth*.
 
 ### Setup Fisico
 * **Equazioni:** Equazioni di Stokes (flusso viscoso a bassi numeri di Reynolds).
@@ -26,22 +26,22 @@ Per addestrare la rete a generalizzare, ogni campione presenta una geometria div
 * **Pareti:** Condizione di *no-slip* (velocità zero) su tutte le altre facce.
 
 ### Output del Solver
-Il solver FEM calcola la soluzione esatta, che viene poi interpolata su una griglia cartesiana regolare (Voxel Grid) per essere digeribile dalla rete neurale.
+Il solver calcola la soluzione esatta, che viene poi interpolata su una griglia cartesiana regolare per essere usata dalla rete neurale.
 * **Input Tensore:** (3, H, H, H) $\rightarrow$ [Maschera Inlet, Velocità Inlet, Maschera Outlet].
 * **Output Tensore:** (4, H, H, H) $\rightarrow$ [Velocità X, Velocità Y, Velocità Z, Pressione].
 
 ---
 
-## 🧠 2. Architettura Neurale (Model Learning)
+## 🧠 2. Architettura Neurale
 Il cuore del sistema (`train_fno3d.py`) è un **Fourier Neural Operator 3D (FNO3d)**, implementato tramite la libreria `neuralop`.
 
 ### Perché FNO?
-A differenza delle CNN classiche, gli FNO imparano un'approssimazione dell'operatore integrale nel dominio delle frequenze. Questo permette:
-1.  **Discretization Invariance:** Il modello può essere addestrato a bassa risoluzione e valutato a risoluzione più alta (Zero-Shot Super-Resolution).
-2.  **Efficienza Globale:** Le convoluzioni spettrali catturano dipendenze a lungo raggio nel fluido meglio delle convoluzioni locali.
+A differenza delle reti classiche, gli FNO imparano un'approssimazione dell'operatore integrale nel dominio delle frequenze. Questo permette:
+1.  **Discretization Invariance:** Il modello può essere addestrato a bassa risoluzione e valutato a risoluzione più alta (Super-Resolution).
+2.  **Efficienza:** Le convoluzioni spettrali catturano dipendenze meglio delle classiche DNN.
 
 ### Iperparametri del Modello
-* **Modi di Fourier:** 16 per asse (taglio delle alte frequenze per compressione e regolarizzazione).
+* **Modi di Fourier:** 16 per asse.
 * **Canali nascosti (Width):** 64.
 * **Input:** 3 canali (geometria e condizioni al contorno).
 * **Output:** 4 canali (campo vettoriale velocità + scalare pressione).
@@ -53,7 +53,7 @@ A differenza delle CNN classiche, gli FNO imparano un'approssimazione dell'opera
 Lo script di training implementa una strategia robusta per garantire la convergenza su problemi fisici 3D.
 
 * **Loss Function:**
-    * Principale: **H1 Loss** (Norma di Sobolev). Questa loss penalizza non solo l'errore sui valori puntuali, ma anche l'errore sulle **derivate spaziali**, cruciale per rispettare la fisica del fluido (gradienti, vorticità).
+    * Principale: **H1 Loss** (Norma di Sobolev). Questa loss penalizza non solo l'errore sui valori puntuali, ma anche l'errore sulle **derivate spaziali**, cruciale per rispettare la fisica del fluido.
     * Validazione: Monitoraggio anche della **LpLoss** (L2 relativa).
 * **Ottimizzatore:** AdamW con Weight Decay ($1e^{-3}$) per regolarizzazione.
 * **Scheduler:** *Cosine Annealing* per ridurre il learning rate gradualmente fino a fine training.
