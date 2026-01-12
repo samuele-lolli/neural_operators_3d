@@ -70,17 +70,3 @@ Le visualizzazioni generate includono:
 3.  **Campo di Pressione:** Verifica della caduta di pressione dall'inlet all'outlet (gradiente di pressione che guida il flusso).
 
 ---
-
-## 📂 Struttura della Repository
-
-```text
-neural_operators_3d/
-│
-├── checkpoints/             # Pesi del modello salvati (fno3d.pt) e indici di test
-├── samples-XX/              # Dataset generati (npz) a risoluzione XX^3
-├── pvd/                     # File Paraview per visualizzazione 3D nativa
-│
-├── generate_samples.py      # Generatore fisico (FEniCS -> NPZ)
-├── train_fno3d.py           # Script di addestramento (PyTorch/NeuralOp)
-├── visualize_results.py     # Script di inferenza e plotting (Matplotlib)
-└── old_scripts_examples/    # Prototipi precedenti (2D Darcy, Shallow Water)
